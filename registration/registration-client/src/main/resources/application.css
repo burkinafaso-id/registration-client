@@ -630,7 +630,7 @@
 Working on new Css by taleev
 */
 #loginScreen {
-	-fx-background-image: url('/images/LoginBackGround.png');
+	-fx-background-image: url('/images/background.jpg');
 	-fx-background-size: cover, auto;
 	-fx-background-position: left top, center;
 }
@@ -1403,7 +1403,7 @@ Working on new Css by taleev
 }
 
 .table-row-cell {
-	-fx-background-color: #FFFFFF;
+	/*-fx-background-color: #FFFFFF;*/
 	-fx-background-insets: 0.0, 0.0 0.0 1.0 0.0;
 	-fx-pref-height: 45.0;
 	-fx-padding: 10 0 10 0;
@@ -1427,8 +1427,12 @@ Working on new Css by taleev
 
 .table-view:focused>.virtual-flow>.clipped-container>.sheet>.table-row-cell:filled:selected>.table-cell
 	{
-	-fx-background-color: #FFFFFF;
+	/*fx-background-color: #FFFFFF;*/
 	-fx-border-width: 0.0 0.0 1.0 0.0;
+}
+
+.eod-table .table-row-cell:selected {
+	-fx-background-color: lightskyblue !important; ;
 }
 
 .table-view .column-header {
@@ -2673,3 +2677,22 @@ Working on new Css by taleev
     -fx-text-fill: #FF0000;
     -fx-font-weight: bold;
 }
+
+.preRegParentPaneSection {
+	-fx-border-color:#020F59;
+	-fx-border-radius: 10.0 10.0 10.0 10.0;
+}
+
+.demoGraphicCustomLabel {
+	-fx-background-color: #ffffff;
+	-fx-border-width: 0.0;
+	-fx-text-fill: #020F59;
+	-fx-font-size: 1.5em;
+	-fx-font-weight: 800;
+}
+
+.demoGraphicCustomField{
+	-fx-pref-width: 50%;
+	-fx-padding: 0 0 10 55;
+}
+

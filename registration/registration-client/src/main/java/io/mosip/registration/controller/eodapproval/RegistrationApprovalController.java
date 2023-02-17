@@ -642,6 +642,9 @@ public class RegistrationApprovalController extends BaseController implements In
 			primaryStage.close();
 			reloadTableView();
 
+			if(table.getItems().size()==0) {
+				goToHomePage();
+			}
 			/*if (RegistrationAppHealthCheckUtil.isNetworkAvailable() && !regIds.isEmpty()) {
 
 				uploadPacketsInBackground(regIds);
