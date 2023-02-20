@@ -28,6 +28,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
 
 /**
  * @author M1044402
@@ -121,6 +122,7 @@ public class DOBAgeFxControl extends FxControl {
 //						"YEARS, RegistrationConstants.DEMOGRAPHIC_FIELD_LABEL, true,
 //						ageVBox.getWidth()));
 		ageVBox.getChildren().add(dobHBox);
+		ageVBox.setMargin(dobHBox, new Insets(0, 30, 0, 0));
 
 		/** Validation message (Invalid/wrong,,etc,.) */
 		ageVBox.getChildren().add(getLabel(uiFieldDTO.getId() + RegistrationConstants.ERROR_MSG, null,

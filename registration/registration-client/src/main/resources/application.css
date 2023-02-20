@@ -630,7 +630,7 @@
 Working on new Css by taleev
 */
 #loginScreen {
-	-fx-background-image: url('/images/background.jpg');
+	-fx-background-image: url('/images/BFAbackground.jpg');
 	-fx-background-size: cover, auto;
 	-fx-background-position: left top, center;
 }
@@ -950,6 +950,7 @@ Working on new Css by taleev
 	-fx-border-width: 0.0;
 	-fx-text-fill: #666666;
 	-fx-font-size: 1em;
+	-fx-min-width: 6em;
 }
 
 .paginationLabel {
