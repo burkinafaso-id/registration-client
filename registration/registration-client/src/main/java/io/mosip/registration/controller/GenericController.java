@@ -769,11 +769,17 @@ public class GenericController extends BaseController {
 					groupFlowPane.getStyleClass().add(RegistrationConstants.DEMOGRAPHIC_GROUP);
 					groupFlowPane.setPadding(new Insets(20, 0, 20, 0));
 
+					ColumnConstraints leftColumn = new ColumnConstraints();
+					leftColumn.setPercentWidth(50);
+					ColumnConstraints rightColumn = new ColumnConstraints();
+					rightColumn.setPercentWidth(50);
+					groupFlowPane.getColumnConstraints().addAll(leftColumn, rightColumn);
+
 					/* Adding Group label */
 					Label label = new Label(groupEntry.getKey());
 					label.getStyleClass().add(RegistrationConstants.DEMOGRAPHIC_GROUP_LABEL);
 					label.setPadding(new Insets(0, 0, 0, 55));
-					label.setPrefWidth(1200);
+					/*label.setPrefWidth(1200);*/
 					groupFlowPane.add(label, 0, 0, 2, 1);
 				}
 				int fieldIndex=0;

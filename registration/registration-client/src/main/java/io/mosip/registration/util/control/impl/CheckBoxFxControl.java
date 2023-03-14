@@ -5,6 +5,7 @@ import java.util.List;
 
 import io.mosip.registration.controller.ClientApplication;
 import io.mosip.registration.util.common.DemographicChangeActionHandler;
+import javafx.geometry.Insets;
 import org.springframework.context.ApplicationContext;
 
 
@@ -67,6 +68,7 @@ public class CheckBoxFxControl extends FxControl {
 				String.join(RegistrationConstants.SLASH, labels) + getMandatorySuffix(uiFieldDTO),
 				RegistrationConstants.DEMOGRAPHIC_TEXTFIELD, prefWidth, false);
 
+		simpleTypeVBox.setMargin(checkBox, new Insets(0, 30, 0, 0));
 		setListener(checkBox);
 		simpleTypeVBox.getChildren().add(checkBox);
 		simpleTypeVBox.getChildren().add(getLabel(uiFieldDTO.getId() + RegistrationConstants.ERROR_MSG, null,
