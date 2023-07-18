@@ -38,6 +38,7 @@ import io.micrometer.core.annotation.Timed;
 import io.mosip.commons.packet.constants.Biometric;
 import io.mosip.kernel.biometrics.constant.BiometricFunction;
 import io.mosip.kernel.biometrics.constant.BiometricType;
+import io.mosip.kernel.biometrics.constant.ProcessedLevelType;
 import io.mosip.kernel.biometrics.entities.BIR;
 import io.mosip.kernel.biometrics.entities.SingleAnySubtypeType;
 import io.mosip.kernel.biosdk.provider.factory.BioAPIFactory;
@@ -73,10 +74,11 @@ import io.mosip.registration.exception.RegBaseUncheckedException;
 import io.mosip.registration.exception.RegistrationExceptionConstants;
 import io.mosip.registration.service.BaseService;
 import io.mosip.registration.service.operator.UserOnboardService;
+import io.mosip.registration.util.common.BIRBuilder;
 
 /**
  * Implementation for {@link UserOnboardService}
- * 
+ *
  * @author Sreekar Chukka
  *
  * @since 1.0.0
@@ -103,6 +105,9 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 
 	@Autowired
 	private BioAPIFactory bioAPIFactory;
+
+	@Autowired
+	private BIRBuilder birBuilder;
 
 	/**
 	 * logger for logging
@@ -250,7 +255,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 	}
 
 	private LinkedHashMap<String, Object> buildDataBlock(String bioType, String bioSubType, byte[] attributeISO,
-			String previousHash, BiometricsDto biometricsDto) throws NoSuchAlgorithmException {
+														 String previousHash, BiometricsDto biometricsDto) throws NoSuchAlgorithmException {
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,
 				"Building data block for User Onboard Authentication with IDA");
 
@@ -301,25 +306,25 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 	private String getSubTypesAsString(BiometricType bioType, String bioAttribute) {
 		List<String> subtypes = new LinkedList<>();
 		switch (bioType) {
-		case FINGER:
-			subtypes.add(bioAttribute.contains("left") ? SingleAnySubtypeType.LEFT.value()
-					: SingleAnySubtypeType.RIGHT.value());
-			if (bioAttribute.toLowerCase().contains("thumb"))
-				subtypes.add(SingleAnySubtypeType.THUMB.value());
-			else {
-				String val = bioAttribute.toLowerCase().replace("left", "").replace("right", "");
-				subtypes.add(SingleAnySubtypeType.fromValue(StringUtils.capitalizeFirstLetter(val).concat("Finger"))
-						.value());
-			}
-			break;
-		case IRIS:
-			subtypes.add(bioAttribute.contains("left") ? SingleAnySubtypeType.LEFT.value()
-					: SingleAnySubtypeType.RIGHT.value());
-			break;
-		case FACE:
-			break;
-		default:
-			break;
+			case FINGER:
+				subtypes.add(bioAttribute.contains("left") ? SingleAnySubtypeType.LEFT.value()
+						: SingleAnySubtypeType.RIGHT.value());
+				if (bioAttribute.toLowerCase().contains("thumb"))
+					subtypes.add(SingleAnySubtypeType.THUMB.value());
+				else {
+					String val = bioAttribute.toLowerCase().replace("left", "").replace("right", "");
+					subtypes.add(SingleAnySubtypeType.fromValue(StringUtils.capitalizeFirstLetter(val).concat("Finger"))
+							.value());
+				}
+				break;
+			case IRIS:
+				subtypes.add(bioAttribute.contains("left") ? SingleAnySubtypeType.LEFT.value()
+						: SingleAnySubtypeType.RIGHT.value());
+				break;
+			case FACE:
+				break;
+			default:
+				break;
 		}
 		return String.join(" ", subtypes);
 	}
@@ -419,7 +424,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 		if (biometrics != null && !biometrics.isEmpty()) {
 			List<BIR> birList = new ArrayList<>();
 			for (BiometricsDto biometricsDto : biometrics) {
-				BIR bir = buildBir(biometricsDto);
+				BIR bir = birBuilder.buildBir(biometricsDto, ProcessedLevelType.RAW);
 				LOGGER.debug(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID, "Adding bir");
 				birList.add(bir);
 			}
@@ -496,7 +501,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 
 	@SuppressWarnings("unchecked")
 	private Map<String, Object> getIdaAuthResponse(Map<String, Object> idaRequestMap, Map<String, Object> requestMap,
-			Map<String, String> requestParamMap, Certificate certificate, ResponseDTO responseDTO) {
+												   Map<String, String> requestParamMap, Certificate certificate, ResponseDTO responseDTO) {
 		try {
 
 			PublicKey publicKey = certificate.getPublicKey();
@@ -518,7 +523,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 			// requestHMAC
 			idaRequestMap.put(RegistrationConstants.ON_BOARD_REQUEST_HMAC,
 					CryptoUtil.encodeToURLSafeBase64(cryptoCore.symmetricEncrypt(symmentricKey, HMACUtils2
-							.digestAsPlainText(new ObjectMapper().writeValueAsString(requestMap).getBytes()).getBytes(),
+									.digestAsPlainText(new ObjectMapper().writeValueAsString(requestMap).getBytes()).getBytes(),
 							null)));
 
 			LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID, "preparing request Session Key.....");
@@ -570,7 +575,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 
 	/**
 	 * Method to insert specified number of 0s in the beginning of the given string
-	 * 
+	 *
 	 * @param string
 	 * @param count  - number of 0's to be inserted
 	 * @return bytes
@@ -591,7 +596,7 @@ public class UserOnboardServiceImpl extends BaseService implements UserOnboardSe
 
 	/**
 	 * Method to return the XOR of the given strings
-	 * 
+	 *
 	 */
 	private byte[] getXOR(String timestamp, String transactionId) {
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,

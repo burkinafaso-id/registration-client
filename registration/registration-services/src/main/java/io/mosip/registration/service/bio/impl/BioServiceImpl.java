@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.time.temporal.ValueRange;
 import java.util.*;
 
-import io.micrometer.core.annotation.Timed;
 import io.mosip.registration.dto.schema.UiFieldDTO;
 import io.mosip.registration.enums.Modality;
 import io.mosip.registration.service.IdentitySchemaService;
@@ -20,13 +19,12 @@ import org.springframework.stereotype.Service;
 import io.mosip.commons.packet.constants.Biometric;
 import io.mosip.kernel.biometrics.constant.BiometricFunction;
 import io.mosip.kernel.biometrics.constant.BiometricType;
+import io.mosip.kernel.biometrics.constant.ProcessedLevelType;
 import io.mosip.kernel.biometrics.entities.BIR;
 import io.mosip.kernel.biosdk.provider.factory.BioAPIFactory;
 import io.mosip.kernel.core.bioapi.exception.BiometricException;
-import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.registration.config.AppConfig;
-import io.mosip.registration.constants.LoggerConstants;
 import io.mosip.registration.constants.RegistrationConstants;
 import io.mosip.registration.context.ApplicationContext;
 import io.mosip.registration.context.SessionContext;
@@ -40,11 +38,12 @@ import io.mosip.registration.mdm.integrator.MosipDeviceSpecificationProvider;
 import io.mosip.registration.mdm.service.impl.MosipDeviceSpecificationFactory;
 import io.mosip.registration.service.BaseService;
 import io.mosip.registration.service.bio.BioService;
+import io.mosip.registration.util.common.BIRBuilder;
 
 /**
  * This class {@code BioServiceImpl} handles all the biometric captures and
  * validations through MDM service
- * 
+ *
  * @author taleev.aalam
  * @author anusha
  *
@@ -66,6 +65,8 @@ public class BioServiceImpl extends BaseService implements BioService {
 	@Autowired
 	private IdentitySchemaService identitySchemaService;
 
+	@Autowired
+	private BIRBuilder birBuilder;
 
 	/**
 	 * Gets the registration DTO from session.
@@ -127,7 +128,7 @@ public class BioServiceImpl extends BaseService implements BioService {
 			return captureModality(mdmRequestDto);
 
 		throw new RegBaseCheckedException(RegistrationExceptionConstants.MDS_BIODEVICE_NOT_FOUND.getErrorCode(),
-					RegistrationExceptionConstants.MDS_BIODEVICE_NOT_FOUND.getErrorMessage());
+				RegistrationExceptionConstants.MDS_BIODEVICE_NOT_FOUND.getErrorMessage());
 	}
 
 	@Override
@@ -164,47 +165,45 @@ public class BioServiceImpl extends BaseService implements BioService {
 	public double getSDKScore(BiometricsDto biometricsDto) throws BiometricException {
 		BiometricType biometricType = BiometricType
 				.fromValue(Biometric.getSingleTypeByAttribute(biometricsDto.getBioAttribute()).name());
-		BIR bir = buildBir(biometricsDto);
+		BIR bir = birBuilder.buildBir(biometricsDto, ProcessedLevelType.RAW);
 		BIR[] birList = new BIR[] { bir };
 		Map<BiometricType, Float> scoreMap = bioAPIFactory
 				.getBioProvider(biometricType, BiometricFunction.QUALITY_CHECK)
 				.getModalityQuality(birList, null);
-		
-		return scoreMap.get(biometricType);
 
-		
+		return scoreMap.get(biometricType);
 	}
 
 	@Override
 	public Map<String, Boolean> getCapturedBiometrics(@NonNull UiFieldDTO fieldDto, double idVersion,
-                                                      @NonNull RegistrationDTO registrationDTO) {
+													  @NonNull RegistrationDTO registrationDTO) {
 		Map<String, Boolean> capturedContext = new HashMap<>();
 //		try {
-			Map<Modality, List<String>> groupedAttributes = getGroupedAttributes(fieldDto.getBioAttributes());
-			for(Modality modality : groupedAttributes.keySet()) {
-				double quality = 0;
-				List<String> capturedAttributes = new ArrayList<>();
-				//iterating through configured bio-attributes
-				for(String attribute : groupedAttributes.get(modality)) {
-					BiometricsDto biometricsDto = registrationDTO.getBiometric(fieldDto.getId(), attribute);
-					//its null, then check exception list
-					if(biometricsDto == null) {
-						capturedContext.put(attribute, registrationDTO.isBiometricExceptionAvailable(fieldDto.getId(), attribute));
-						continue;
-					}
-					//its force captured, not required to validate threshold
-					if(biometricsDto.isForceCaptured()) {
-						capturedContext.put(attribute, true);
-						continue;
-					}
-					quality = quality + biometricsDto.getQualityScore();
-					capturedAttributes.add(attribute);
+		Map<Modality, List<String>> groupedAttributes = getGroupedAttributes(fieldDto.getBioAttributes());
+		for(Modality modality : groupedAttributes.keySet()) {
+			double quality = 0;
+			List<String> capturedAttributes = new ArrayList<>();
+			//iterating through configured bio-attributes
+			for(String attribute : groupedAttributes.get(modality)) {
+				BiometricsDto biometricsDto = registrationDTO.getBiometric(fieldDto.getId(), attribute);
+				//its null, then check exception list
+				if(biometricsDto == null) {
+					capturedContext.put(attribute, registrationDTO.isBiometricExceptionAvailable(fieldDto.getId(), attribute));
+					continue;
 				}
-				//if some attributes are captured, determine capture status based on threshold check
-				for(String attr : capturedAttributes) {
-					capturedContext.put(attr, (quality / capturedAttributes.size()) >= getMDMQualityThreshold(modality));
+				//its force captured, not required to validate threshold
+				if(biometricsDto.isForceCaptured()) {
+					capturedContext.put(attribute, true);
+					continue;
 				}
+				quality = quality + biometricsDto.getQualityScore();
+				capturedAttributes.add(attribute);
 			}
+			//if some attributes are captured, determine capture status based on threshold check
+			for(String attr : capturedAttributes) {
+				capturedContext.put(attr, (quality / capturedAttributes.size()) >= getMDMQualityThreshold(modality));
+			}
+		}
 		/*} catch (RegBaseCheckedException e) {
 			LOGGER.error("Failed to fetch Id schema with version {} due to {}", idVersion, e);
 		}*/

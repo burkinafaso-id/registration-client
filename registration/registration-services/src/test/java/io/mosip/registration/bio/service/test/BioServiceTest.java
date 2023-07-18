@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.kernel.biometrics.constant.BiometricFunction;
 import io.mosip.kernel.biometrics.constant.BiometricType;
+import io.mosip.kernel.biometrics.constant.ProcessedLevelType;
 import io.mosip.kernel.biometrics.entities.BIR;
 import io.mosip.kernel.biosdk.provider.factory.BioAPIFactory;
 import io.mosip.kernel.biosdk.provider.impl.BioProviderImpl_V_0_9;
@@ -28,6 +29,7 @@ import io.mosip.registration.mdm.spec_0_9_5.dto.response.*;
 import io.mosip.registration.service.IdentitySchemaService;
 import io.mosip.registration.service.bio.BioService;
 import io.mosip.registration.test.config.TestDaoConfig;
+import io.mosip.registration.util.common.BIRBuilder;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.*;
@@ -72,6 +74,9 @@ public class BioServiceTest {
     private BioService bioService;
 
     @Autowired
+    private BIRBuilder birBuilder;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -91,10 +96,10 @@ public class BioServiceTest {
 
     @AfterClass
     public static void closeWebServerConnection() throws IOException {
-       if(mockWebServer != null) {
-           mockWebServer.close();
-           mockWebServer = null;
-       }
+        if(mockWebServer != null) {
+            mockWebServer.close();
+            mockWebServer = null;
+        }
     }
 
     @Before
@@ -247,8 +252,8 @@ public class BioServiceTest {
 
     @Test
     public void getSupportedBioAttributesWithEmptyInputTest() {
-       Map result = bioService.getSupportedBioAttributes(Collections.EMPTY_LIST);
-       Assert.assertTrue(result.isEmpty());
+        Map result = bioService.getSupportedBioAttributes(Collections.EMPTY_LIST);
+        Assert.assertTrue(result.isEmpty());
     }
 
     @Test(expected = NullPointerException.class)
@@ -321,7 +326,7 @@ public class BioServiceTest {
         biometricsDto.setQualityScore(70.0);
         biometricsDto.setAttributeISO(new byte[0]);
         biometricsDto.setModalityName(Modality.FACE.name());
-        BIR bir = bioService.buildBir(biometricsDto);
+        BIR bir = birBuilder.buildBir(biometricsDto, ProcessedLevelType.RAW);
         Assert.assertNotNull(bir);
         Assert.assertEquals(0, bir.getBdb().length, 0);
         double scoreInBIR = bir.getBdbInfo().getQuality().getScore();
@@ -367,7 +372,7 @@ public class BioServiceTest {
     public void captureModalityTest() throws RegBaseCheckedException, IOException {
         String[] exceptions = new String[0];
         MDMRequestDto mdmRequestDto = new MDMRequestDto(Modality.FACE.name(), exceptions,
-        "REGISTRATION", "TEST", 20, 1, 80);
+                "REGISTRATION", "TEST", 20, 1, 80);
 
         //queued for check_service_availability
         mockWebServer.enqueue(new MockResponse());
@@ -389,7 +394,7 @@ public class BioServiceTest {
         MockResponse captureResponse = new MockResponse();
         captureResponse.setBody(getRCaptureResponse());
         mockWebServer.enqueue(captureResponse); //queued for actual RCAPTURE request
-        
+
         String errorCode = null;
         try {
             bioService.captureModality(mdmRequestDto);

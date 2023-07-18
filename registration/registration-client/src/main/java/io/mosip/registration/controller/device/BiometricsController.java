@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -28,15 +27,7 @@ import io.mosip.biometrics.util.face.FaceDecoder;
 import io.mosip.biometrics.util.finger.FingerDecoder;
 import io.mosip.biometrics.util.iris.IrisDecoder;
 import io.mosip.commons.packet.dto.packet.BiometricsException;
-import io.mosip.kernel.biometrics.constant.BiometricFunction;
 import io.mosip.kernel.biometrics.constant.BiometricType;
-import io.mosip.kernel.biometrics.constant.PurposeType;
-import io.mosip.kernel.biometrics.entities.BDBInfo;
-import io.mosip.kernel.biometrics.entities.BIR;
-import io.mosip.kernel.biometrics.entities.BIR.BIRBuilder;
-import io.mosip.kernel.biometrics.entities.RegistryIDType;
-import io.mosip.kernel.biosdk.provider.factory.BioAPIFactory;
-import io.mosip.kernel.core.bioapi.exception.BiometricException;
 import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.registration.config.AppConfig;
@@ -249,9 +240,6 @@ public class BiometricsController extends BaseController /* implements Initializ
 
 	@Autowired
 	private UserOnboardParentController userOnboardParentController;
-
-	@Autowired
-	private BioAPIFactory bioAPIFactory;
 
 	@Autowired
 	private UserDetailDAO userDetailDAO;
@@ -1183,12 +1171,12 @@ public class BiometricsController extends BaseController /* implements Initializ
 						convertRequestDto.setVersion("ISO19794_4_2011");
 						convertRequestDto.setInputBytes(dto.getAttributeISO());
 						STREAM_IMAGES.put(String.format("%s_%s_%s",
-										currentSubType, dto.getBioAttribute(), String.valueOf(retry)),
+								currentSubType, dto.getBioAttribute(), String.valueOf(retry)),
 								FingerDecoder.convertFingerISOToImageBytes(convertRequestDto));
 						score += dto.getQualityScore();
 					}
 					BIO_SCORES.put(String.format("%s_%s_%s",
-									currentSubType, modalityName, String.valueOf(retry)),
+							currentSubType, modalityName, String.valueOf(retry)),
 							score / biometricsDtos.size());
 					break;
 				case RegistrationConstants.IRIS_DOUBLE:
@@ -1197,12 +1185,12 @@ public class BiometricsController extends BaseController /* implements Initializ
 						convertRequestDto.setVersion("ISO19794_6_2011");
 						convertRequestDto.setInputBytes(dto.getAttributeISO());
 						STREAM_IMAGES.put(String.format("%s_%s_%s",
-										currentSubType, dto.getBioAttribute(), String.valueOf(retry)),
+								currentSubType, dto.getBioAttribute(), String.valueOf(retry)),
 								IrisDecoder.convertIrisISOToImageBytes(convertRequestDto));
 						score += dto.getQualityScore();
 					}
 					BIO_SCORES.put(String.format("%s_%s_%s",
-									currentSubType, modalityName, String.valueOf(retry)),
+							currentSubType, modalityName, String.valueOf(retry)),
 							score / biometricsDtos.size());
 					break;
 
@@ -1212,10 +1200,10 @@ public class BiometricsController extends BaseController /* implements Initializ
 					convertRequestDto.setVersion("ISO19794_5_2011");
 					convertRequestDto.setInputBytes(faceDto.getAttributeISO());
 					STREAM_IMAGES.put(String.format("%s_%s_%s",
-									currentSubType, faceDto.getBioAttribute(), String.valueOf(retry)),
+							currentSubType, faceDto.getBioAttribute(), String.valueOf(retry)),
 							FaceDecoder.convertFaceISOToImageBytes(convertRequestDto));
 					BIO_SCORES.put(String.format("%s_%s_%s",
-									currentSubType, modalityName, String.valueOf(retry)),
+							currentSubType, modalityName, String.valueOf(retry)),
 							faceDto.getQualityScore());
 					break;
 			}
@@ -2010,39 +1998,10 @@ public class BiometricsController extends BaseController /* implements Initializ
 		}
 
 		BiometricType biometricType = BiometricType.fromValue(modality);
-		Map<String, List<BIR>> gallery = new HashMap<>();
 		List<UserBiometric> userBiometrics = userDetailDAO.findAllActiveUsersExceptCurrentUser(biometricType.value(),
 				SessionContext.userContext().getUserId());
-		if (userBiometrics.isEmpty())
-			return false;
 
-		userBiometrics.forEach(userBiometric -> {
-			String userId = userBiometric.getUserBiometricId().getUsrId();
-			gallery.computeIfAbsent(userId, k -> new ArrayList<BIR>())
-					.add(buildBir(userBiometric.getBioIsoImage(), biometricType));
-		});
-
-		List<BIR> sample = new ArrayList<>(biometrics.size());
-		biometrics.forEach(biometricDto -> {
-			sample.add(buildBir(biometricDto.getAttributeISO(), biometricType));
-		});
-
-		try {
-			Map<String, Boolean> result = bioAPIFactory.getBioProvider(biometricType, BiometricFunction.MATCH)
-					.identify(sample, gallery, biometricType, null);
-			return result.entrySet().stream().anyMatch(e -> e.getValue() == true);
-		} catch (BiometricException e) {
-			LOGGER.error("Failed to dedupe check >> ", e);
-		}
-		return false;
-	}
-
-	private BIR buildBir(byte[] biometricImageISO, BiometricType modality) {
-		return new BIRBuilder().withBdb(biometricImageISO)
-				.withBdbInfo(new BDBInfo.BDBInfoBuilder().withFormat(new RegistryIDType())
-						.withType(Collections.singletonList(modality))
-						.withPurpose(PurposeType.IDENTIFY).build())
-				.build();
+		return userBiometrics.isEmpty() ? false : matchBiometrics(biometricType, userBiometrics, biometrics);
 	}
 
 	private VBox getImageVBox(String modality, String subtype, List<String> configBioAttributes) {

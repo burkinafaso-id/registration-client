@@ -4,8 +4,6 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
-import io.mosip.kernel.biometrics.constant.ProcessedLevelType;
-import io.mosip.kernel.biometrics.entities.BIR;
 import io.mosip.kernel.core.bioapi.exception.BiometricException;
 import io.mosip.registration.dto.RegistrationDTO;
 import io.mosip.registration.dto.packetmanager.BiometricsDto;
@@ -19,7 +17,7 @@ import lombok.NonNull;
 /**
  * This class {@code BioService} handles all the biometric captures and
  * validations through MDM service
- * 
+ *
  * @author taleev.aalam
  * @since 1.0.0
  */
@@ -57,25 +55,9 @@ public interface BioService {
 	public InputStream getStream(MdmBioDevice mdmBioDevice, String modality) throws RegBaseCheckedException;
 
 	/**
-	 * @param biometricsDto captured biometrics dto
-	 * 
-	 * @return bir builded for biometrics dto
-	 * 
-	 */
-	public BIR buildBir(BiometricsDto biometricsDto);
-
-	/**
-	 * @param bioAttribute biometric segment name
-	 * @param qualityScore biometric quality score
-	 * @param iso          biometric value in iso format
-	 * @return bir builder for biometric
-	 */
-	public BIR buildBir(String bioAttribute, long qualityScore, byte[] iso, ProcessedLevelType processedLevelType);
-	
-	/**
 	 * @param biometricsDto biometrics captured DTO
 	 * @return sdk score
-	 * @throws BiometricException 
+	 * @throws BiometricException
 	 */
 	public double getSDKScore(BiometricsDto biometricsDto) throws BiometricException;
 
@@ -87,7 +69,7 @@ public interface BioService {
 	 * @return
 	 */
 	public Map<String, Boolean> getCapturedBiometrics(UiFieldDTO field, double idVersion,
-                                                      @NonNull RegistrationDTO registrationDTO);
+													  @NonNull RegistrationDTO registrationDTO);
 
 	/**
 	 * Returns the list of supported and valid bio-attributes per modality

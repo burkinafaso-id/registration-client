@@ -6,19 +6,20 @@ import static io.mosip.registration.constants.RegistrationConstants.APPLICATION_
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.transaction.Transactional;
 
-import io.mosip.registration.entity.UserMachineMapping;
-import io.mosip.registration.entity.id.UserMachineMappingID;
-import io.mosip.registration.repositories.UserMachineMappingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import io.mosip.commons.packet.constants.Biometric;
+import io.mosip.commons.packet.util.PacketManagerHelper;
 import io.mosip.kernel.biometrics.entities.BIR;
+import io.mosip.kernel.biometrics.entities.BiometricRecord;
 import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.core.util.DateUtils;
@@ -33,15 +34,17 @@ import io.mosip.registration.dto.biometric.FingerprintDetailsDTO;
 import io.mosip.registration.dto.packetmanager.BiometricsDto;
 import io.mosip.registration.entity.UserBiometric;
 import io.mosip.registration.entity.UserDetail;
+import io.mosip.registration.entity.UserMachineMapping;
 import io.mosip.registration.entity.id.UserBiometricId;
+import io.mosip.registration.entity.id.UserMachineMappingID;
 import io.mosip.registration.exception.RegBaseUncheckedException;
-import io.mosip.registration.repositories.MachineMasterRepository;
 import io.mosip.registration.repositories.UserBiometricRepository;
 import io.mosip.registration.repositories.UserDetailRepository;
+import io.mosip.registration.repositories.UserMachineMappingRepository;
 
 /**
  * The implementation class of {@link UserOnboardDAO}
- * 
+ *
  * @author Sreekar Chukka
  *
  * @since 1.0.0
@@ -54,12 +57,6 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 	private UserBiometricRepository userBiometricRepository;
 
 	/**
-	 * machineMasterRepository instance creation using autowired annotation
-	 */
-	@Autowired
-	private MachineMasterRepository machineMasterRepository;
-
-	/**
 	 * machineMapping instance creation using autowired annotation
 	 */
 	@Autowired
@@ -68,6 +65,9 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 	@Autowired
 	private UserDetailRepository userDetailRepository;
 
+	@Autowired
+	private PacketManagerHelper packetManagerHelper;
+
 	/**
 	 * logger for logging
 	 */
@@ -75,7 +75,7 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * io.mosip.registration.dao.UserOnBoardDao#insert(io.mosip.registration.dto.
 	 * biometric.BiometricDTO)
@@ -228,7 +228,7 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 			UserMachineMapping userMachineMapping = machineMappingRepository.findByUserMachineMappingIdUsrIdIgnoreCase(usrId);
 			return userMachineMapping != null ? userMachineMapping.getCrDtime() : null;
 		} catch (RuntimeException runtimeException) {
-			
+
 			throw new RegBaseUncheckedException(RegistrationConstants.USER_ON_BOARDING_EXCEPTION,
 					runtimeException.getMessage());
 		}
@@ -237,11 +237,11 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 	@Override
 	public String insert(List<BiometricsDto> biometrics) {
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID, "Entering insert method");
-		String response = RegistrationConstants.EMPTY;
+		String response = null;
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,
 				"Biometric information insertion into table");
 		List<UserBiometric> bioMetricsList = new ArrayList<>();
-		
+
 		try {
 			biometrics.forEach( dto -> {
 				UserBiometric bioMetrics = new UserBiometric();
@@ -273,7 +273,7 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 		}
 		throw new RegBaseUncheckedException(RegistrationConstants.USER_ON_BOARDING_EXCEPTION, response);
 	}
-	
+
 	/**
 	 * Gets the bio attribute.
 	 *
@@ -286,7 +286,7 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 		return bioType.getBiometricType().value();
 
 	}
-	
+
 	@Override
 	public String insertExtractedTemplates(List<BIR> templates) {
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID, "Entering insertExtractedTemplates method");
@@ -294,44 +294,48 @@ public class UserOnboardDAOImpl implements UserOnboardDAO {
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,
 				"Biometric information insertion into table");
 		List<UserBiometric> bioMetricsList = new ArrayList<>();
-		
+
 		try {
-			templates.forEach( template -> {
-				UserBiometric bioMetrics = new UserBiometric();
+			for (BIR template : templates) {
+				UserBiometric biometrics = new UserBiometric();
 				UserBiometricId biometricId = new UserBiometricId();
 				biometricId.setBioAttributeCode(getBioAttribute(template.getBdbInfo().getSubtype()));
 				biometricId.setBioTypeCode(getBioAttributeCode(getBioAttribute(template.getBdbInfo().getSubtype())));
 				biometricId.setUsrId(SessionContext.userContext().getUserId());
-				bioMetrics.setBioIsoImage(template.getBdb());
-				bioMetrics.setUserBiometricId(biometricId);
+				biometrics.setBioIsoImage(template.getBdb());
+				biometrics.setUserBiometricId(biometricId);
 				Long qualityScore = template.getBdbInfo().getQuality().getScore();
-				bioMetrics.setQualityScore(qualityScore.intValue());
-				bioMetrics.setCrBy(SessionContext.userContext().getUserId());
-				bioMetrics.setCrDtime(Timestamp.valueOf(DateUtils.getUTCCurrentDateTime()));
-				bioMetrics.setIsActive(true);
-				bioMetricsList.add(bioMetrics);
-			});
+				biometrics.setQualityScore(qualityScore.intValue());
+				biometrics.setCrBy(SessionContext.userContext().getUserId());
+				biometrics.setCrDtime(Timestamp.valueOf(DateUtils.getUTCCurrentDateTime()));
+				biometrics.setIsActive(true);
+
+				BiometricRecord biometricRecord = new BiometricRecord();
+				biometricRecord.setOthers(new HashMap<>());
+				biometricRecord.setSegments(Arrays.asList(template));
+				biometrics.setBioRawImage(packetManagerHelper.getXMLData(biometricRecord, true));
+
+				bioMetricsList.add(biometrics);
+			}
 
 			clearUserBiometrics(SessionContext.userContext().getUserId());
 			userBiometricRepository.saveAll(bioMetricsList);
 			LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,
 					"Biometric information insertion successful");
-	
+
 			response = RegistrationConstants.SUCCESS;
-		} catch (RuntimeException runtimeException) {
-	
-			LOGGER.error(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID,
-					runtimeException.getMessage() + ExceptionUtils.getStackTrace(runtimeException));
+		} catch (Exception exception) {
+			LOGGER.error("Saving operator details in DB failed with error - ", exception);
 			response = RegistrationConstants.USER_ON_BOARDING_ERROR_RESPONSE;
 			throw new RegBaseUncheckedException(RegistrationConstants.USER_ON_BOARDING_EXCEPTION + response,
-					runtimeException.getMessage());
+					exception.getMessage());
 		}
 		LOGGER.info(LOG_REG_USER_ONBOARD, APPLICATION_NAME, APPLICATION_ID, "Leaving insertExtractedTemplates method");
 		return response;
 	}
 
 	private String getBioAttribute(List<String> subType) {
-		String subTypeName = String.join("", subType);
+		String subTypeName = (subType == null || subType.isEmpty()) ? "Face" : String.join("", subType);
 		return BiometricAttributes.getAttributeBySubType(subTypeName);
 	}
 

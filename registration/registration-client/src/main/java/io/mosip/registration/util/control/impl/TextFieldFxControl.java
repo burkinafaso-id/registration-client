@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import io.mosip.registration.controller.*;
+import javafx.geometry.Insets;
 import javafx.scene.layout.*;
 import org.springframework.context.ApplicationContext;
 
@@ -236,6 +237,7 @@ public class TextFieldFxControl extends FxControl {
 
 		fieldTitle.setText(String.join(RegistrationConstants.SLASH, labels)	+ getMandatorySuffix(uiFieldDTO));
 		simpleTypeVBox.getChildren().add(vBox);
+        simpleTypeVBox.setMargin(vBox, new Insets(0, 30, 0, 0));
 		return simpleTypeVBox;
 	}
 	
