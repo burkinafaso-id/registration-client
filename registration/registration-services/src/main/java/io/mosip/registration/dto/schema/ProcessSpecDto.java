@@ -17,6 +17,8 @@ public class ProcessSpecDto {
     private String flow;
     @JsonProperty(value = "isActive")
     private boolean isActive;
+    @JsonProperty(value = "isDisabled")
+    private boolean isDisabled;
     private HashMap<String, String> label;
     private List<UiScreenDTO> screens;
     private HashMap<String, String> caption;
