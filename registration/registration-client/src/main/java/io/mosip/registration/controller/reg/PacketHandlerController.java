@@ -863,7 +863,7 @@ public class PacketHandlerController extends BaseController implements Initializ
 		label.getStyleClass().add("operationalTitle");
 		gridPane.addColumn(1, label);
 		changeNodeOrientation(gridPane);
-		gridPane.setDisable(FlowType.valueOf(processSpecDto.getFlow()) != FlowType.NEW);
+		gridPane.setDisable(processSpecDto.isDisabled());
 		return gridPane;
 	}
 	
