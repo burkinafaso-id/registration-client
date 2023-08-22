@@ -1,6 +1,6 @@
 #virtualKeyboard {
 	-fx-background-radius: 6.0, 5.0;
-	-fx-font-size: 14.1px;
+	-fx-font-size: 14.0px;
 }
 
 .table-cell:editable {
